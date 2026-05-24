@@ -351,6 +351,7 @@ python run.py
 ```
 
 Ele inicia o backend em `http://127.0.0.1:8001` e o frontend em `http://127.0.0.1:8501`.
+Se alguma porta estiver indisponivel no Windows, o script escolhe uma porta livre e mostra a URL correta no terminal.
 
 ## Como Rodar Backend
 
