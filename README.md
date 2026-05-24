@@ -344,6 +344,14 @@ uv sync
 
 Use dois terminais: um para backend e outro para frontend.
 
+Ou use o script unico:
+
+```bash
+python run.py
+```
+
+Ele inicia o backend em `http://127.0.0.1:8001` e o frontend em `http://127.0.0.1:8501`.
+
 ## Como Rodar Backend
 
 Porta recomendada atual:
