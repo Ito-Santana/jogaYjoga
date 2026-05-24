@@ -961,6 +961,42 @@ def chat_first_number(value: str) -> int | None:
     return None
 
 
+def chat_option_selection(value: str) -> int | None:
+    text = normalize_text(value)
+    compact = text.replace("#", " ").strip()
+    if compact.isdigit():
+        return int(compact)
+
+    words = compact.split()
+    option_terms = {"opcao", "opção", "numero", "n", "quadra", "horario"}
+    if len(words) <= 3 and any(word in option_terms for word in words):
+        for word in words:
+            token = word.strip(".,;:")
+            if token.isdigit():
+                return int(token)
+    return None
+
+
+def is_new_chat_search(message: str, parsed: dict) -> bool:
+    text = normalize_text(message)
+    if chat_option_selection(message) is not None:
+        return False
+    if parsed.get("intent") in {"criar_reserva", "buscar_quadras", "ver_disponibilidade"}:
+        return True
+    search_terms = [
+        "marcar",
+        "reservar",
+        "bater bola",
+        "jogar",
+        "pelada",
+        "quadra",
+        "disponivel",
+        "horario",
+        "o que tem",
+    ]
+    return any(term in text for term in search_terms)
+
+
 def parse_chat_date(message: str) -> date | None:
     text = normalize_text(message)
     if "hoje" in text:
@@ -1038,11 +1074,23 @@ def chat_sport_matches(requested_sport: str, espaco: dict) -> bool:
 
 def detect_chat_sport(message: str, espacos: list[dict]) -> str | None:
     text = normalize_text(message)
+    sport_synonyms = {
+        "futebol": ["pelada", "bater bola", "jogar bola", "futebol", "society"],
+        "beach tennis": ["beach tennis", "beachtennis"],
+        "tenis": ["tenis", "tennis"],
+        "volei": ["volei", "voley", "volley", "voleibol"],
+        "futevolei": ["futevolei", "fute volei"],
+    }
     sports = sorted(
         {sport for espaco in espacos for sport in (espaco.get("esportes") or [])},
         key=len,
         reverse=True,
     )
+    for canonical, aliases in sport_synonyms.items():
+        if any(alias in text for alias in aliases):
+            matched = match_chat_option(canonical, sports)
+            if matched:
+                return matched
     for sport in sports:
         if normalize_text(sport) in text:
             return sport
@@ -1170,6 +1218,10 @@ def format_chat_slots(slots: list[dict], heading: str = "Horarios disponiveis:")
     return "\n".join(lines)
 
 
+def slot_start_time(slot: dict) -> time:
+    return time.fromisoformat(slot["hora_inicio"])
+
+
 def load_chat_slots(flow: dict, reservation_date: date) -> str | None:
     flow["date"] = reservation_date.isoformat()
     slots, error = get_availability(flow["selected_space"]["id"], reservation_date)
@@ -1180,6 +1232,13 @@ def load_chat_slots(flow: dict, reservation_date: date) -> str | None:
     if not available_slots:
         reset_chat_flow()
         return "Nao ha horarios disponiveis nessa data. Tente outra data."
+    requested_time = parse_chat_time(flow.get("time_hint"))
+    if requested_time:
+        filtered_slots = [
+            slot for slot in available_slots if slot_start_time(slot) >= requested_time
+        ]
+        if filtered_slots:
+            available_slots = filtered_slots
     flow["slots"] = available_slots[:8]
     flow["step"] = "choose_slot"
     return None
@@ -1334,8 +1393,11 @@ def handle_chat_reservation_flow(token: str, message: str, espacos: list[dict]) 
         return format_chat_candidates(candidates)
 
     if flow.get("step") == "choose_space":
+        if is_new_chat_search(message, parsed):
+            reset_chat_flow()
+            return handle_chat_reservation_flow(token, message, espacos)
         try:
-            selected_index = int(parsed.get("space_number") or chat_first_number(message) or 0) - 1
+            selected_index = int(chat_option_selection(message) or parsed.get("space_number") or 0) - 1
             selected = flow["candidates"][selected_index]
         except (ValueError, IndexError, KeyError):
             return "Digite o numero de uma das quadras listadas."
@@ -1374,8 +1436,11 @@ def handle_chat_reservation_flow(token: str, message: str, espacos: list[dict]) 
         return format_chat_slots(flow["slots"])
 
     if flow.get("step") == "choose_slot":
+        if is_new_chat_search(message, parsed):
+            reset_chat_flow()
+            return handle_chat_reservation_flow(token, message, espacos)
         try:
-            selected_index = int(parsed.get("slot_number") or chat_first_number(message) or 0) - 1
+            selected_index = int(chat_option_selection(message) or parsed.get("slot_number") or 0) - 1
             selected_slot = flow["slots"][selected_index]
         except (ValueError, IndexError, KeyError):
             return "Digite o numero de um dos horarios listados."
@@ -1402,6 +1467,10 @@ def handle_chat_reservation_flow(token: str, message: str, espacos: list[dict]) 
     reservation_date = parse_chat_date(parsed.get("date_text") or message)
     requested_time = parse_chat_time(parsed.get("time_text") or message)
     flow.update({"intent": "criar_reserva", "sport": sport, "city": city})
+    if reservation_date:
+        flow["date_hint"] = reservation_date.isoformat()
+    if requested_time:
+        flow["time_hint"] = requested_time.strftime("%H:%M")
 
     if not flow.get("sport"):
         flow["step"] = "ask_sport"
@@ -1416,10 +1485,6 @@ def handle_chat_reservation_flow(token: str, message: str, espacos: list[dict]) 
         reset_chat_flow()
         return "Nao encontrei quadras com esse esporte e cidade. Tente outros filtros."
     flow["step"] = "choose_space"
-    if reservation_date:
-        flow["date_hint"] = reservation_date.isoformat()
-    if requested_time:
-        flow["time_hint"] = requested_time.strftime("%H:%M")
     return format_chat_candidates(candidates)
 
 

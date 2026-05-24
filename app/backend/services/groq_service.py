@@ -46,6 +46,7 @@ except ImportError:  # pragma: no cover - exercised only when dependency is miss
 
 GROQ_MODEL = os.getenv("JOGAYJOGA_AI_MODEL", "llama-3.3-70b-versatile")
 GROQ_TIMEOUT_SECONDS = float(os.getenv("GROQ_TIMEOUT_SECONDS", "12"))
+GROQ_BASE_URL = os.getenv("GROQ_BASE_URL", "https://api.groq.com")
 
 SYSTEM_PROMPT = """
 Voce e um parser de reservas esportivas.
@@ -119,6 +120,7 @@ def validate_groq_environment() -> None:
         "Groq SDK/config",
         sdk_loaded=Groq is not None,
         model=GROQ_MODEL,
+        base_url=GROQ_BASE_URL,
         timeout_seconds=GROQ_TIMEOUT_SECONDS,
         source="env",
     )
@@ -145,7 +147,7 @@ def get_groq_client() -> Any:
             "GROQ_API_KEY nao configurada.",
             code="missing_api_key",
         )
-    return Groq(api_key=api_key, timeout=GROQ_TIMEOUT_SECONDS)
+    return Groq(api_key=api_key, base_url=GROQ_BASE_URL, timeout=GROQ_TIMEOUT_SECONDS)
 
 
 def sanitize_messages(messages: list[dict[str, str]]) -> list[dict[str, str]]:

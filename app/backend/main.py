@@ -796,7 +796,7 @@ def parse_chat_message(
     chat_log(
         "CHAT",
         "Mensagem recebida",
-        message=payload.message,
+        user_message=payload.message,
         current_step=payload.current_step,
         user_id=current_user.id_usuario,
     )

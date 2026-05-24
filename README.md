@@ -278,7 +278,7 @@ Crie um arquivo local chamado `.env` na raiz do projeto. Esse arquivo guarda seg
 GROQ_API_KEY=coloque_sua_chave_groq_aqui
 JOGAYJOGA_AI_MODEL=llama-3.3-70b-versatile
 GROQ_TIMEOUT_SECONDS=12
-GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_BASE_URL=https://api.groq.com
 JOGAYJOGA_API_URL=http://127.0.0.1:8001
 JOGAYJOGA_SECRET_KEY=troque-em-producao
 JOGAYJOGA_TOKEN_TTL_HOURS=24
@@ -311,10 +311,10 @@ O modelo base configurado no projeto e:
 JOGAYJOGA_AI_MODEL=llama-3.3-70b-versatile
 ```
 
-A URL base da API compativel com OpenAI e:
+A URL base usada pelo SDK da Groq e:
 
 ```env
-GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_BASE_URL=https://api.groq.com
 ```
 
 ### Onde a API key entra no codigo
